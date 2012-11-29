@@ -4,13 +4,30 @@ There were a number of things I wanted to fix with the Facebook provided FBProfi
 
 * Caching of the downloaded profile images, so the network did not get hit for every instance of the view
 * Start and completion handlers to allow control of the presentation of the view (e.g. fade-in or show a UIActivityIndicatorView)
+* Be notified when the download fails
 * Control of when the empty profile image got shown
+* Work well when the view is embedded in a UITableCellView
 
 In addition there are a couple of other significant changes:
 
-* The implementation has been converted to arc
+* The implementation has been converted to ARC
 * key/value observing is used to monitor changes to profileID and pictureCropping
 * no download request is made for zero size images
+
+## Installation
+
+The simplest way to install DBFBProfilePictureView is to use [CocoaPods](http://cocoapods.org).
+The homepage has a quick start guide. Add the following to your Podfile:
+
+		platform :ios, '5.0'
+		pod 'DBFBProfilePictureView', '1.0.0'
+		
+This will then automatically handle the dependencies. Also, it is a simple way to get updates.
+
+If you want to take the manual approach then the two files needed are in the sub-directory DBFBProfilePictureView.
+To build them you will also need AFNetworking 1.0 or later and the Facebook iOS SDK v3.1.1.
+Either your project needs to be built with ARC enabled, or you will need to set the
+-fobjc-arc flag as described [here](http://www.codeography.com/2011/10/10/making-arc-and-non-arc-play-nice.html).
 
 ## Getting Started
 
@@ -22,7 +39,7 @@ Declare the property in a view controller or UITableCellView:
     @property(strong) DBFBProfilePictureView* facebookPictureView;
 ```
 
-Initialize the property:
+Initialize the property in viewDidLoad of your view controller or init of your UITableCellView:
 
 ```objc
         self.facebookPictureView = [[DBFBProfilePictureView alloc] initWithFrame:CGRectMake(x,y,width,height)];
@@ -43,7 +60,7 @@ Initialize the property:
         };
 ```
 
-Set the profileID:
+Set the profileID when you know it:
 
 ```objc
 		facebookPictureView.profileID = xxxxx;

@@ -23,12 +23,31 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
 
 @interface DBFBProfilePictureView : UIView
 
+/**
+ The facebook profile id for the user picture that you want to load.
+ */
 @property (copy) NSString* profileID;
+
+/**
+ The cropping type you want for the picture, the enum is defined in the facebook SDK.
+ */
 @property FBProfilePictureCropping pictureCropping;
 
+/**
+ A block that gets called before the download of a profile picture begins.
+ */
 @property (strong) DBFBProfilePictureViewStartHandler startHandler;
+
+/**
+ A block that gets called when the download of a profile picture completes.
+ If an error occurs then it is returned here.
+ */
 @property (strong) DBFBProfilePictureViewHandler completionHandler;
 
+/**
+ Set whether the empty profile picture gets shown when the profileID is nil.
+ Defaults to NO
+ */
 @property BOOL showEmptyImage;
 
 @end

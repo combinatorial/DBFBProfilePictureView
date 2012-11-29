@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name     = 'DBFBProfilePictureView'
-  s.version  = '1.0'
+  s.version  = '1.0.0'
   s.platform = :ios, '5.0'
   s.summary  = 'Improved Facebook profile picture view.'
   s.homepage = 'https://github.com/combinatorial/DBFBProfilePictureView'
