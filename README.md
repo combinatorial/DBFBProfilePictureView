@@ -25,7 +25,7 @@ Declare the property in a view controller or UITableCellView:
 Initialize the property:
 
 ```objc
-        self.facebookPictureView = [[DBFBProfilePictureView alloc] initWithFrame:CGRectMake(imageInset,(self.bounds.size.height-commentPopoverImageSize())/2, commentPopoverImageSize(), commentPopoverImageSize())];
+        self.facebookPictureView = [[DBFBProfilePictureView alloc] initWithFrame:CGRectMake(x,y,width,height)];
         //hide the view when the download starts
         self.facebookPictureView.startHandler = ^(DBFBProfilePictureView* view){
             view.layer.opacity = 0.0f;
