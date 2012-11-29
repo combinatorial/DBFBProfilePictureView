@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.homepage = 'https://github.com/combinatorial/DBFBProfilePictureView'
   s.license  = 'Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)'
   s.author   = { 'David Brittain' => 'combinatorial@gmail.com' }
-  s.source   = { :git => 'https://github.com/combinatorial/DBFBProfilePictureView.git', :tag => '1.0' }
+  s.source   = { :git => 'https://github.com/combinatorial/DBFBProfilePictureView.git', :tag => '1.0.0' }
   s.requires_arc = true
   s.source_files = 'DBFBProfilePictureView'
   s.dependency 'AFNetworking', '1.0'
