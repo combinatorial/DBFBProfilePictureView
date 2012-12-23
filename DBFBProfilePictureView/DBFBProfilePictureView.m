@@ -20,6 +20,25 @@
 
 #import <AFNetworking/AFNetworking.h>
 
+@interface DBFBProfilePictureCachePrivate : NSObject
+
+@property (weak) UIImage* imageObject;
+
+@end
+
+@implementation DBFBProfilePictureCachePrivate
+
+- (id)initWithImage:(UIImage*)image
+{
+    self = [super init];
+    if(self) {
+        _imageObject = image;
+    }
+    return self;
+}
+
+@end
+
 @interface DBFBProfilePictureView()
 
 @property (readonly, nonatomic) NSString *imageQueryParamString;
@@ -63,6 +82,7 @@
 - (void)dealloc {
     [self removeObserver:self forKeyPath:@"profileID"];
     [self removeObserver:self forKeyPath:@"pictureCropping"];
+    [self removeObserver:self forKeyPath:@"showEmptyImage"];
 }
 
 #pragma mark -
@@ -119,17 +139,18 @@
     
     [self addObserver:self forKeyPath:@"profileID" options:NSKeyValueObservingOptionNew context:nil];
     [self addObserver:self forKeyPath:@"pictureCropping" options:NSKeyValueObservingOptionNew context:nil];
+    [self addObserver:self forKeyPath:@"showEmptyImage" options:NSKeyValueObservingOptionNew context:nil];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    if([keyPath isEqualToString:@"profileID"] || [keyPath isEqualToString:@"pictureCropping"]) {
+    if([keyPath isEqualToString:@"profileID"] || [keyPath isEqualToString:@"pictureCropping"] || [keyPath isEqualToString:@"showEmptyImage"]) {
         [self refreshImage:YES];
     }
 }
 
-+ (NSOperationQueue *)sharedProfileImageRequestOperationQueue {
-    
++ (NSOperationQueue *)sharedProfileImageRequestOperationQueue
+{
     static NSOperationQueue *_profileImageRequestOperationQueue = nil;
     
     static dispatch_once_t done;
@@ -141,7 +162,186 @@
     return _profileImageRequestOperationQueue;
 }
 
-- (void)refreshImage:(BOOL)forceRefresh  {
++ (NSMutableDictionary *)sharedCacheDictionary
+{
+    static NSMutableDictionary *_sharedCacheDictionary = nil;
+    
+    static dispatch_once_t done;
+    dispatch_once(&done, ^{
+        _sharedCacheDictionary = [[NSMutableDictionary alloc] init];
+    });
+    
+    return _sharedCacheDictionary;
+}
+
+static BOOL cleanupScheduled = NO;
+
+- (void)cleanCache
+{
+    BOOL needCleanup = NO;
+    
+    NSMutableDictionary *cache = [self.class sharedCacheDictionary];
+    
+    @synchronized(cache) {
+        if(!cleanupScheduled) {
+            needCleanup = YES;
+            cleanupScheduled = YES;
+        }
+    }
+
+    if(needCleanup) {
+        //clean up the cache some time later (30 seconds), it only depends on class methods
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 30ull * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+            
+            @synchronized(cache) {
+
+                cleanupScheduled = NO;
+                
+                //clean up any cache items that have nil weak references
+                __block NSMutableArray *cacheKeysToRemove = nil;
+                [cache enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop){
+                    DBFBProfilePictureCachePrivate *cachedItem = (DBFBProfilePictureCachePrivate *)value;
+                    if(cachedItem.imageObject == nil) {
+                        if(cacheKeysToRemove == nil) {
+                            cacheKeysToRemove = [NSMutableArray arrayWithObject:key];
+                        } else {
+                            [cacheKeysToRemove addObject:key];
+                        }
+                    }
+                }];
+                if(cacheKeysToRemove!=nil) {
+                    [cache removeObjectsForKeys:cacheKeysToRemove];
+                }
+            }
+        });
+    }
+}
+
+- (void)cacheImage:(UIImage*)image forURL:(NSURL*)url
+{
+    [self cleanCache];
+    
+    DBFBProfilePictureCachePrivate *cachedItem = [[DBFBProfilePictureCachePrivate alloc] initWithImage:image];
+    
+    NSMutableDictionary *cache = [self.class sharedCacheDictionary];
+    @synchronized(cache) {
+        [cache setObject:cachedItem forKey:url];
+    }
+}
+
+- (UIImage*)cachedImageForURL:(NSURL*)url
+{
+    [self cleanCache];
+    
+    NSMutableDictionary *cache = [self.class sharedCacheDictionary];
+    
+    @synchronized(cache) {
+        UIImage* cachedImage = nil;
+        DBFBProfilePictureCachePrivate* cachedItem = [cache objectForKey:url];
+        if(cachedItem != nil) {
+            cachedImage = cachedItem.imageObject;
+            if(cachedImage == nil) {
+                [cache removeObjectForKey:url];
+            }
+        }
+        
+        return cachedImage;
+    }
+}
+
++ (NSMutableDictionary *)sharedImageRequestDictionary
+{
+    static NSMutableDictionary *_sharedImageRequestDictionary = nil;
+    
+    static dispatch_once_t done;
+    dispatch_once(&done, ^{
+        _sharedImageRequestDictionary = [[NSMutableDictionary alloc] init];
+    });
+    
+    return _sharedImageRequestDictionary;
+}
+
+- (void)imageDownloadComplete:(UIImage*)image forURL:(NSURL*)url
+{
+    self.imageRequestOperation = nil;
+    
+    NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
+    NSMutableSet* requestorsToUpdate = nil;
+    @synchronized(requestsInProgress) {
+        requestorsToUpdate = [requestsInProgress objectForKey:url];
+        [requestsInProgress removeObjectForKey:url];
+    }
+    [self cacheImage:image forURL:url];
+    for(DBFBProfilePictureView* pictureView in requestorsToUpdate) {
+        pictureView.imageView.image = image;
+        [pictureView ensureImageViewContentMode];
+        if(pictureView.completionHandler != nil) {
+            pictureView.completionHandler(pictureView, nil);
+        }
+    }
+}
+
+- (void)imageDownloadFailedForURL:(NSURL*)url withError:(NSError*)error
+{
+    self.imageRequestOperation = nil;
+    
+    NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
+    NSMutableSet* requestorsToUpdate = nil;
+    @synchronized(requestsInProgress) {
+        requestorsToUpdate = [requestsInProgress objectForKey:url];
+        [requestsInProgress removeObjectForKey:url];
+    }
+    
+    for(DBFBProfilePictureView* pictureView in requestorsToUpdate) {
+        if(pictureView.completionHandler != nil) {
+            pictureView.completionHandler(self, error);
+        }
+    }
+}
+
+- (void)requestImageDownload:(NSURL*)url
+{
+    NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
+    BOOL needsDownload = NO;
+    @synchronized(requestsInProgress) {
+        
+        NSMutableSet* requestsForURL = [requestsInProgress objectForKey:url];
+        
+        if(requestsForURL != nil) {
+            [requestsForURL addObject:self];
+        } else {
+            requestsForURL = [NSMutableSet setWithObject:self];
+            [requestsInProgress setObject:requestsForURL forKey:url];
+            needsDownload = YES;
+        }
+    }
+    
+    if(needsDownload) {
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:30.0];
+        [request setHTTPShouldHandleCookies:NO];
+        [request setHTTPShouldUsePipelining:YES];
+        
+        AFImageRequestOperation* requestOperation = [AFImageRequestOperation imageRequestOperationWithRequest:request
+                                                                                         imageProcessingBlock:nil
+                                                                                                      success:^(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image){
+                                                                                                          [self imageDownloadComplete:image forURL:url];
+                                                                                                      }
+                                                                                                      failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError* error){
+                                                                                                          [self imageDownloadFailedForURL:url withError:error];
+                                                                                                      }];
+        
+        self.imageRequestOperation = requestOperation;
+        
+        [[[self class] sharedProfileImageRequestOperationQueue] addOperation:self.imageRequestOperation];
+    }
+    
+    if(self.startHandler != nil) {
+        self.startHandler(self);
+    }
+}
+
+- (void)refreshImage:(BOOL)forceRefresh
+{
     NSString *newImageQueryParamString = self.imageQueryParamString;
     
     // If not forcing refresh, check to see if the previous size we used would be the same
@@ -156,6 +356,13 @@
     
     if (self.profileID && newImageQueryParamString.length > 0) {
         
+        if(self.imageRequestOperation != nil) {
+            [self.imageRequestOperation cancel];
+            NSError* cancelError =[NSError errorWithDomain:@"Image download cancelled" code:0 userInfo:nil];
+            [self imageDownloadFailedForURL:self.imageRequestOperation.request.URL withError:cancelError];
+            self.imageRequestOperation = nil;
+        }
+        
         NSString *template = @"%@/%@/picture?%@";
         NSString *urlString = [NSString stringWithFormat:template,
                                FBGraphBasePath,
@@ -163,39 +370,18 @@
                                newImageQueryParamString];
         NSURL *url = [NSURL URLWithString:urlString];
         
-        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:30.0];
-        [request setHTTPShouldHandleCookies:NO];
-        [request setHTTPShouldUsePipelining:YES];
+        UIImage* cachedImage = [self cachedImageForURL:url];
         
-        [self.imageRequestOperation cancel];
-        self.imageRequestOperation = nil;
+        if(cachedImage != nil) {
+            self.imageView.image = cachedImage;
+            [self ensureImageViewContentMode];
+            if(self.completionHandler != nil) {
+                self.completionHandler(self, nil);
+            }
+        } else {
         
-        AFImageRequestOperation* requestOperation = [AFImageRequestOperation imageRequestOperationWithRequest:request
-                                                                                         imageProcessingBlock:nil
-                                                                                                      success:^(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image){
-                                                                                                          self.imageRequestOperation = nil;
-                                                                                                          self.imageView.image = image;
-                                                                                                          [self ensureImageViewContentMode];
-                                                                                                          if(self.completionHandler != nil) {
-                                                                                                              self.completionHandler(self, nil);
-                                                                                                          }
-                                                                                                      }
-                                                                                                      failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError* error){
-                                                                                                          self.imageRequestOperation = nil;
-                                                                                                          if(self.completionHandler != nil) {
-                                                                                                              self.completionHandler(self, error);
-                                                                                                          }
-                                                                                                      }];
-        
-        self.imageRequestOperation = requestOperation;
-        
-        
-        if(self.startHandler != nil) {
-            self.startHandler(self);
+            [self requestImageDownload:url];
         }
-        
-        [[[self class] sharedProfileImageRequestOperationQueue] addOperation:self.imageRequestOperation];
-        
 
     } else if(self.showEmptyImage) {
         BOOL isSquare = (self.pictureCropping == FBProfilePictureCroppingSquare);
