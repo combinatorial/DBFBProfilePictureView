@@ -20,6 +20,26 @@
 
 #import <AFNetworking/AFNetworking.h>
 
+@interface DBFBProfilePictureRequestPrivate : NSObject
+
+@property (strong,nonatomic) AFImageRequestOperation* requestOperation;
+@property (strong,nonatomic) NSMutableSet* requestorsToUpdate;
+
+@end
+
+@implementation DBFBProfilePictureRequestPrivate
+
+- (id)initWithProfilePictureView:(DBFBProfilePictureView*)view
+{
+    self = [super init];
+    if(self) {
+        _requestorsToUpdate = [NSMutableSet setWithObject:view];
+    }
+    return self;
+}
+
+@end
+
 @interface DBFBProfilePictureCachePrivate : NSObject
 
 @property (weak) UIImage* imageObject;
@@ -44,8 +64,7 @@
 @property (readonly, nonatomic) NSString *imageQueryParamString;
 @property (strong, nonatomic) NSString *previousImageQueryParamString;
 @property (strong, nonatomic) UIImageView *imageView;
-
-@property (strong) AFImageRequestOperation* imageRequestOperation;
+@property (strong, nonatomic) NSURL *url;
 
 @end
 
@@ -262,17 +281,15 @@ static BOOL cleanupScheduled = NO;
 }
 
 - (void)imageDownloadComplete:(UIImage*)image forURL:(NSURL*)url
-{
-    self.imageRequestOperation = nil;
-    
+{    
     NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
-    NSMutableSet* requestorsToUpdate = nil;
+    DBFBProfilePictureRequestPrivate *pictureRequest = nil;
     @synchronized(requestsInProgress) {
-        requestorsToUpdate = [requestsInProgress objectForKey:url];
+        pictureRequest = [requestsInProgress objectForKey:url];
         [requestsInProgress removeObjectForKey:url];
     }
     [self cacheImage:image forURL:url];
-    for(DBFBProfilePictureView* pictureView in requestorsToUpdate) {
+    for(DBFBProfilePictureView* pictureView in pictureRequest.requestorsToUpdate) {
         pictureView.imageView.image = image;
         [pictureView ensureImageViewContentMode];
         if(pictureView.completionHandler != nil) {
@@ -281,18 +298,29 @@ static BOOL cleanupScheduled = NO;
     }
 }
 
+- (void)removeFromRequestorsList
+{
+    if (self.url) {
+        NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
+        DBFBProfilePictureRequestPrivate *pictureRequest = nil;
+        @synchronized(requestsInProgress) {
+            pictureRequest = [requestsInProgress objectForKey:self.url];
+            [pictureRequest.requestorsToUpdate removeObject:self];
+        }
+        self.url = nil;
+    }
+}
+
 - (void)imageDownloadFailedForURL:(NSURL*)url withError:(NSError*)error
 {
-    self.imageRequestOperation = nil;
-    
     NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
-    NSMutableSet* requestorsToUpdate = nil;
+    DBFBProfilePictureRequestPrivate *pictureRequest = nil;
     @synchronized(requestsInProgress) {
-        requestorsToUpdate = [requestsInProgress objectForKey:url];
+        pictureRequest = [requestsInProgress objectForKey:url];
         [requestsInProgress removeObjectForKey:url];
     }
     
-    for(DBFBProfilePictureView* pictureView in requestorsToUpdate) {
+    for(DBFBProfilePictureView* pictureView in pictureRequest.requestorsToUpdate) {
         if(pictureView.completionHandler != nil) {
             pictureView.completionHandler(self, error);
         }
@@ -301,22 +329,24 @@ static BOOL cleanupScheduled = NO;
 
 - (void)requestImageDownload:(NSURL*)url
 {
+    self.url = url;
     NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
-    BOOL needsDownload = NO;
+    DBFBProfilePictureRequestPrivate *pictureRequest = nil;
     @synchronized(requestsInProgress) {
         
-        NSMutableSet* requestsForURL = [requestsInProgress objectForKey:url];
+        pictureRequest = [requestsInProgress objectForKey:url];
         
-        if(requestsForURL != nil) {
-            [requestsForURL addObject:self];
+        if(pictureRequest != nil) {
+            [pictureRequest.requestorsToUpdate addObject:self];
+            pictureRequest = nil;
         } else {
-            requestsForURL = [NSMutableSet setWithObject:self];
-            [requestsInProgress setObject:requestsForURL forKey:url];
-            needsDownload = YES;
+            pictureRequest = [[DBFBProfilePictureRequestPrivate alloc] initWithProfilePictureView:self];
+            [requestsInProgress setObject:pictureRequest forKey:url];
         }
     }
     
-    if(needsDownload) {
+    if(pictureRequest) {
+
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:30.0];
         [request setHTTPShouldHandleCookies:NO];
         [request setHTTPShouldUsePipelining:YES];
@@ -330,9 +360,8 @@ static BOOL cleanupScheduled = NO;
                                                                                                           [self imageDownloadFailedForURL:url withError:error];
                                                                                                       }];
         
-        self.imageRequestOperation = requestOperation;
-        
-        [[[self class] sharedProfileImageRequestOperationQueue] addOperation:self.imageRequestOperation];
+        [[[self class] sharedProfileImageRequestOperationQueue] addOperation:requestOperation];
+        pictureRequest.requestOperation = requestOperation;
     }
     
     if(self.startHandler != nil) {
@@ -356,12 +385,7 @@ static BOOL cleanupScheduled = NO;
     
     if (self.profileID && newImageQueryParamString.length > 0) {
         
-        if(self.imageRequestOperation != nil) {
-            [self.imageRequestOperation cancel];
-            NSError* cancelError =[NSError errorWithDomain:@"Image download cancelled" code:0 userInfo:nil];
-            [self imageDownloadFailedForURL:self.imageRequestOperation.request.URL withError:cancelError];
-            self.imageRequestOperation = nil;
-        }
+        [self removeFromRequestorsList];
         
         NSString *template = @"%@/%@/picture?%@";
         NSString *urlString = [NSString stringWithFormat:template,
