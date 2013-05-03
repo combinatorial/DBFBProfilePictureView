@@ -306,6 +306,10 @@ static BOOL cleanupScheduled = NO;
         @synchronized(requestsInProgress) {
             pictureRequest = [requestsInProgress objectForKey:self.url];
             [pictureRequest.requestorsToUpdate removeObject:self];
+            if (pictureRequest.requestorsToUpdate.count == 0) {
+                [pictureRequest.requestOperation cancel];
+                [requestsInProgress removeObjectForKey:self.url];
+            }
         }
         self.url = nil;
     }
