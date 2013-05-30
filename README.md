@@ -39,6 +39,12 @@ Declare the property in a view controller or UITableCellView:
     @property(strong) DBFBProfilePictureView* facebookPictureView;
 ```
 
+Import QuartzCore as we will be using CALayer:
+
+```objc
+    #import <QuartzCore/QuartzCore.h>
+```
+
 Initialize the property in viewDidLoad of your view controller or init of your UITableCellView:
 
 ```objc
