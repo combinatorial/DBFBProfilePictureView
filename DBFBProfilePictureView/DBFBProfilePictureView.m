@@ -387,6 +387,9 @@ static BOOL cleanupScheduled = NO;
         return;
     }
     
+    self.imageView.image = nil;
+    BOOL showEmptyImage = self.showEmptyImage;
+    
     if (self.profileID && newImageQueryParamString.length > 0) {
         
         [self removeFromRequestorsList];
@@ -401,6 +404,7 @@ static BOOL cleanupScheduled = NO;
         UIImage* cachedImage = [self cachedImageForURL:url];
         
         if(cachedImage != nil) {
+            showEmptyImage = NO;
             self.imageView.image = cachedImage;
             [self ensureImageViewContentMode];
             if(self.completionHandler != nil) {
@@ -411,7 +415,9 @@ static BOOL cleanupScheduled = NO;
             [self requestImageDownload:url];
         }
 
-    } else if(self.showEmptyImage) {
+    }
+    
+    if(showEmptyImage) {
         BOOL isSquare = (self.pictureCropping == FBProfilePictureCroppingSquare);
         
         NSString *blankImageName = [NSString stringWithFormat:@"FacebookSDKResources.bundle/FBProfilePictureView/images/fb_blank_profile_%@.png",
