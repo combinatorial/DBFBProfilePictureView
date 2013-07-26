@@ -159,11 +159,12 @@
     [self addObserver:self forKeyPath:@"profileID" options:NSKeyValueObservingOptionNew context:nil];
     [self addObserver:self forKeyPath:@"pictureCropping" options:NSKeyValueObservingOptionNew context:nil];
     [self addObserver:self forKeyPath:@"showEmptyImage" options:NSKeyValueObservingOptionNew context:nil];
+    [self addObserver:self forKeyPath:@"emptyImage" options:NSKeyValueObservingOptionNew context:nil];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    if([keyPath isEqualToString:@"profileID"] || [keyPath isEqualToString:@"pictureCropping"] || [keyPath isEqualToString:@"showEmptyImage"]) {
+    if([keyPath isEqualToString:@"profileID"] || [keyPath isEqualToString:@"pictureCropping"] || [keyPath isEqualToString:@"showEmptyImage"] || [keyPath isEqualToString:@"emptyImage"]) {
         [self refreshImage:YES];
     }
 }
@@ -418,12 +419,16 @@ static BOOL cleanupScheduled = NO;
     }
     
     if(showEmptyImage) {
-        BOOL isSquare = (self.pictureCropping == FBProfilePictureCroppingSquare);
+        if (self.emptyImage == nil) {
+         
+            BOOL isSquare = (self.pictureCropping == FBProfilePictureCroppingSquare);
+            
+            NSString *blankImageName = [NSString stringWithFormat:@"FacebookSDKResources.bundle/FBProfilePictureView/images/fb_blank_profile_%@.png",
+                                        isSquare ? @"square" : @"portrait"];
+            self.emptyImage = [UIImage imageNamed:blankImageName];
+        }
         
-        NSString *blankImageName = [NSString stringWithFormat:@"FacebookSDKResources.bundle/FBProfilePictureView/images/fb_blank_profile_%@.png",
-                                    isSquare ? @"square" : @"portrait"];
-        
-        self.imageView.image = [UIImage imageNamed:blankImageName];
+        self.imageView.image = self.emptyImage;
         [self ensureImageViewContentMode];
     }
     

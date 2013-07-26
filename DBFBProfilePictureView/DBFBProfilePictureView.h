@@ -50,4 +50,10 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
  */
 @property BOOL showEmptyImage;
 
+/**
+ Override the image that gets shown when the profileID is nil. Set it to nil to 
+ return to the default empty image.
+ */
+@property UIImage *emptyImage;
+
 @end
