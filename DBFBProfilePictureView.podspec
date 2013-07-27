@@ -11,10 +11,11 @@ Pod::Spec.new do |s|
   s.source_files = 'DBFBProfilePictureView'
   s.dependency 'AFNetworking', '>= 1.0'
   s.dependency 'Facebook-iOS-SDK', '>= 3.1.1'
-  s.framework    = 'QuartzCore'
+  s.framework    = 'QuartzCore', 'MobileCoreServices', 'SystemConfiguration'
 
   s.prefix_header_contents = <<-EOS
     #import <SystemConfiguration/SystemConfiguration.h>
+    #import <MobileCoreServices/MobileCoreServices.h>
   EOS
 
 end
