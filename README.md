@@ -74,13 +74,15 @@ Set the profileID when you know it:
 
 ## Version history
 
-1.0.0 - Initial release
+1.4.0 - allow a custom image to be set to be shown if no profile picture is available
 
-1.1.0 - Add in-memory caching & sharing of UIImage objects for the same requested URL
+1.3.0 - nil the image when the view is re-used and a download is triggered. (Fixes problem with UICollectionView described in Issue #5)
 
 1.2.0 - Don't call the completion callback when a download is cancelled due to the view being re-used
 
-1.3.0 - nil the image when the view is re-used and a download is triggered. (Fixes problem with UICollectionView described in Issue #5)
+1.1.0 - Add in-memory caching & sharing of UIImage objects for the same requested URL
+
+1.0.0 - Initial release
 
 ## License
 
