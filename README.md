@@ -20,7 +20,7 @@ The simplest way to install DBFBProfilePictureView is to use [CocoaPods](http://
 The homepage has a quick start guide. Add the following to your Podfile:
 
 		platform :ios, '5.0'
-		pod 'DBFBProfilePictureView', '1.1.0'
+		pod 'DBFBProfilePictureView'
 		
 This will then automatically handle the dependencies. Also, it is a simple way to get updates.
 
