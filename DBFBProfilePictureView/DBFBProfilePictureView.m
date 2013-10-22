@@ -16,8 +16,6 @@
 
 #import "DBFBProfilePictureView.h"
 
-#import "FBSDKVersion.h"  //for FB_IOS_SDK_MIGRATION_BUNDLE
-
 #import <AFNetworking/AFNetworking.h>
 
 @interface DBFBProfilePictureRequestPrivate : NSObject
@@ -61,8 +59,8 @@
 
 @interface DBFBProfilePictureView()
 
-@property (readonly, nonatomic) NSString *imageQueryParamString;
-@property (strong, nonatomic) NSString *previousImageQueryParamString;
+@property (readonly, nonatomic) NSDictionary *imageQueryParam;
+@property (strong, nonatomic) NSDictionary *previousImageQueryParam;
 @property (strong, nonatomic) UIImageView *imageView;
 @property (strong, nonatomic) NSURL *url;
 
@@ -106,8 +104,7 @@
 
 #pragma mark -
 
-- (NSString *)imageQueryParamString  {
-    
+- (NSDictionary *)imageQueryParam {
     static CGFloat screenScaleFactor = 0.0;
     if (screenScaleFactor == 0.0) {
         screenScaleFactor = [[UIScreen mainScreen] scale];
@@ -120,24 +117,25 @@
     if (self.pictureCropping == FBProfilePictureCroppingSquare) {
         
         if(width == 0) {
-            return @"";
+            return nil;
         }
         
-        return [NSString stringWithFormat:@"width=%d&height=%d&migration_bundle=%@",
-                width,
-                width,
-                FB_IOS_SDK_MIGRATION_BUNDLE];
+        return @{
+                     @"width" :  [NSString stringWithFormat:@"%d",width],
+                     @"height" : [NSString stringWithFormat:@"%d",width],
+                 };
     }
     
     // For non-square images, we choose between three variants knowing that the small profile picture is
     // 50 pixels wide, normal is 100, and large is about 200.
     if (width <= 50) {
-        return @"type=small";
+        return @{@"type":@"small"};
     } else if (width <= 100) {
-        return @"type=normal";
+        return @{@"type":@"normal"};
     } else {
-        return @"type=large";
+        return @{@"type":@"large"};
     }
+
 }
 
 - (void)initialize {
@@ -376,12 +374,12 @@ static BOOL cleanupScheduled = NO;
 
 - (void)refreshImage:(BOOL)forceRefresh
 {
-    NSString *newImageQueryParamString = self.imageQueryParamString;
+    NSDictionary *newImageQueryParam = self.imageQueryParam;
     
     // If not forcing refresh, check to see if the previous size we used would be the same
     // as what we'd request now, as this method could be called often on control bounds animation,
     // and we only want to fetch when needed.
-    if (!forceRefresh && [self.previousImageQueryParamString isEqualToString:newImageQueryParamString]) {
+    if (!forceRefresh && [self.previousImageQueryParam isEqualToDictionary:newImageQueryParam]) {
         
         // But we still may need to adjust the contentMode.
         [self ensureImageViewContentMode];
@@ -391,16 +389,20 @@ static BOOL cleanupScheduled = NO;
     self.imageView.image = nil;
     BOOL showEmptyImage = self.showEmptyImage;
     
-    if (self.profileID && newImageQueryParamString.length > 0) {
+    if (self.profileID && newImageQueryParam) {
         
         [self removeFromRequestorsList];
         
-        NSString *template = @"%@/%@/picture?%@";
-        NSString *urlString = [NSString stringWithFormat:template,
-                               FBGraphBasePath,
-                               self.profileID,
-                               newImageQueryParamString];
-        NSURL *url = [NSURL URLWithString:urlString];
+        // Create the request to let the Facebook SDK handle the URL
+        NSString *graphPath = [NSString stringWithFormat:@"%@/picture",self.profileID];
+        FBRequest *fbRequest = [[FBRequest alloc] initWithSession:nil graphPath:graphPath parameters:newImageQueryParam HTTPMethod:nil];
+        FBRequestConnection *requestConnection = [[FBRequestConnection alloc] init];
+        [requestConnection addRequest:fbRequest completionHandler:nil];
+        
+        
+        // Get the url
+        NSURL *url = requestConnection.urlRequest.URL;
+        
         
         UIImage* cachedImage = [self cachedImageForURL:url];
         
@@ -432,7 +434,7 @@ static BOOL cleanupScheduled = NO;
         [self ensureImageViewContentMode];
     }
     
-    self.previousImageQueryParamString = newImageQueryParamString;
+    self.previousImageQueryParam = newImageQueryParam;
 }
 
 - (void)ensureImageViewContentMode {
