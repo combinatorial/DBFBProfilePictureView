@@ -16,7 +16,7 @@
 
 #import "DBFBProfilePictureView.h"
 
-#import "AFNetworking.h"
+#import <AFNetworking/AFNetworking.h>
 
 @interface DBFBProfilePictureRequestPrivate : NSObject
 
