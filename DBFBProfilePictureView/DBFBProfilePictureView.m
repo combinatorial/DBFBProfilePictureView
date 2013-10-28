@@ -428,7 +428,7 @@ static BOOL cleanupScheduled = NO;
             
             NSString *blankImageName = [NSString stringWithFormat:@"FacebookSDKResources.bundle/FBProfilePictureView/images/fb_blank_profile_%@.png",
                                         isSquare ? @"square" : @"portrait"];
-            self.emptyImage = [UIImage imageNamed:blankImageName];
+            _emptyImage = [UIImage imageNamed:blankImageName];
         }
         
         self.imageView.image = self.emptyImage;

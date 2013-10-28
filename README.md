@@ -74,6 +74,9 @@ Set the profileID when you know it:
 
 ## Version history
 
+1.4.1 - fix infinite recursion when no custom empty profile picture is specified.
+      - Remove use of deprecated FBGraphBasePath (thanks to FlorianDenis).
+
 1.4.0 - allow a custom image to be set to be shown if no profile picture is available
 
 1.3.0 - nil the image when the view is re-used and a download is triggered. (Fixes problem with UICollectionView described in Issue #5)
