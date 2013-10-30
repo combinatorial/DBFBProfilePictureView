@@ -100,6 +100,7 @@
     [self removeObserver:self forKeyPath:@"profileID"];
     [self removeObserver:self forKeyPath:@"pictureCropping"];
     [self removeObserver:self forKeyPath:@"showEmptyImage"];
+    [self removeObserver:self forKeyPath:@"emptyImage"];
 }
 
 #pragma mark -
