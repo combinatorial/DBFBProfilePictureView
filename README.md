@@ -74,6 +74,8 @@ Set the profileID when you know it:
 
 ## Version history
 
+1.4.2 - fix bug with unregistering an observer (thanks to FlorianDenis).
+
 1.4.1 - fix infinite recursion when no custom empty profile picture is specified.
       - Remove use of deprecated FBGraphBasePath (thanks to FlorianDenis).
 
