@@ -9,7 +9,7 @@ Pod::Spec.new do |s|
   s.source   = { :git => 'https://github.com/combinatorial/DBFBProfilePictureView.git', :tag => '1.4.2' }
   s.requires_arc = true
   s.source_files = 'DBFBProfilePictureView'
-  s.dependency 'AFNetworking', '~> 1.3.1'
+  s.dependency 'AFNetworking', '~> 2.0'
   s.dependency 'Facebook-iOS-SDK', '>= 3.5.1'
   s.framework    = 'QuartzCore', 'MobileCoreServices', 'SystemConfiguration'
 

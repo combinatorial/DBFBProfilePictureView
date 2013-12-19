@@ -20,7 +20,7 @@
 
 @interface DBFBProfilePictureRequestPrivate : NSObject
 
-@property (strong,nonatomic) AFImageRequestOperation* requestOperation;
+@property (strong,nonatomic) AFHTTPRequestOperation* requestOperation;
 @property (strong,nonatomic) NSMutableSet* requestorsToUpdate;
 
 @end
@@ -355,14 +355,13 @@ static BOOL cleanupScheduled = NO;
         [request setHTTPShouldHandleCookies:NO];
         [request setHTTPShouldUsePipelining:YES];
         
-        AFImageRequestOperation* requestOperation = [AFImageRequestOperation imageRequestOperationWithRequest:request
-                                                                                         imageProcessingBlock:nil
-                                                                                                      success:^(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image){
-                                                                                                          [self imageDownloadComplete:image forURL:url];
-                                                                                                      }
-                                                                                                      failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError* error){
-                                                                                                          [self imageDownloadFailedForURL:url withError:error];
-                                                                                                      }];
+        AFHTTPRequestOperation *requestOperation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
+        requestOperation.responseSerializer = [AFImageResponseSerializer serializer];
+        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+            [self imageDownloadComplete:responseObject forURL:url];
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            [self imageDownloadFailedForURL:url withError:error];
+        }];
         
         [[[self class] sharedProfileImageRequestOperationQueue] addOperation:requestOperation];
         pictureRequest.requestOperation = requestOperation;
