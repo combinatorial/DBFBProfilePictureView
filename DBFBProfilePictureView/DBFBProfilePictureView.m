@@ -40,32 +40,26 @@
 
 @interface DBFBProfilePictureCachePrivate : NSObject
 
-@property (weak) UIImage* imageObject;
-@property (strong) UIImage* imageObjectStrong;
+@property (strong) UIImage* imageObject;
+@property (strong) NSDate *lastUsed;
 
 @end
 
 @implementation DBFBProfilePictureCachePrivate
 
-- (id)initWithImage:(UIImage*)image cacheBeyondLifeTime:(BOOL)beyondLifetime
+- (id)initWithImage:(UIImage*)image
 {
     self = [super init];
     if(self) {
-        if (beyondLifetime) {
-            _imageObjectStrong = image;
-        } else {
-            _imageObject = image;
-        }
+        _imageObject = image;
+        _lastUsed = [NSDate date];
     }
     return self;
 }
 
 @end
 
-@interface DBFBProfilePictureView() {
-    BOOL _cacheBeyondLifetime;
-    NSUInteger _maxImagesCached;
-}
+@interface DBFBProfilePictureView()
 
 @property (readonly, nonatomic) NSDictionary *imageQueryParam;
 @property (strong, nonatomic) NSDictionary *previousImageQueryParam;
@@ -101,28 +95,6 @@
     if (self) {
         [self initialize];
     }
-    return self;
-}
-
-- (id)initAndCacheImagesBeyondTheirLifetimeMaxImagesCached:(NSUInteger)maxCache {
-    self = [super init];
-    if (self) {
-        [self initialize];
-        _cacheBeyondLifetime = YES;
-        _maxImagesCached = maxCache;
-    }
-    
-    return self;
-}
-
-- (id)initWithFrame:(CGRect)frame cacheImagesBeyondTheirLifetimeMaxImagesCached:(NSUInteger)maxCache {
-    self = [super initWithFrame:frame];
-    if (self) {
-        [self initialize];
-        _cacheBeyondLifetime = YES;
-        _maxImagesCached = maxCache;
-    }
-    
     return self;
 }
 
@@ -189,9 +161,6 @@
     [self addObserver:self forKeyPath:@"pictureCropping" options:NSKeyValueObservingOptionNew context:nil];
     [self addObserver:self forKeyPath:@"showEmptyImage" options:NSKeyValueObservingOptionNew context:nil];
     [self addObserver:self forKeyPath:@"emptyImage" options:NSKeyValueObservingOptionNew context:nil];
-    
-    _cacheBeyondLifetime = NO;
-    _maxImagesCached = 0;
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
@@ -226,6 +195,24 @@
     return _sharedCacheDictionary;
 }
 
+static int _maxImagesCachedBeyondLifetime = 0;
+
++ (BOOL)shouldCacheImageBeyondLifetime
+{
+    return _maxImagesCachedBeyondLifetime > 0;
+}
+
++ (int)maxImagesCachedBeyondLifetime
+{
+    return _maxImagesCachedBeyondLifetime;
+}
+
++ (void)setMaxImagesCachedBeyondLifetime:(int)maxImagesCachedBeyondLifetime
+{
+    _maxImagesCachedBeyondLifetime = maxImagesCachedBeyondLifetime;
+}
+
+
 static BOOL cleanupScheduled = NO;
 
 - (void)cleanCache
@@ -248,28 +235,26 @@ static BOOL cleanupScheduled = NO;
             @synchronized(cache) {
 
                 cleanupScheduled = NO;
+                BOOL cacheBeyondLifetime = [[self class] shouldCacheImageBeyondLifetime];
+                int maxImagesCached = [[self class] maxImagesCachedBeyondLifetime];
                 
-                //clean up any cache items that have nil weak references
-                __block NSMutableArray *cacheKeysToRemove = nil;
-                __block NSUInteger numKeysToBeRemoved = 0;
-                [cache enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop){
-                    DBFBProfilePictureCachePrivate *cachedItem = (DBFBProfilePictureCachePrivate *)value;
-                    if((!_cacheBeyondLifetime && cachedItem.imageObject == nil) ||
-                       (_cacheBeyondLifetime && _maxImagesCached > 0 &&
-                        ([cache count] - numKeysToBeRemoved) > _maxImagesCached)) {
-                        // TODO: Change the ordering of removal...
-                        /* Remove image from cache */
-                        if(cacheKeysToRemove == nil) {
-                            cacheKeysToRemove = [NSMutableArray arrayWithObject:key];
-                        } else {
-                            [cacheKeysToRemove addObject:key];
-                        }
-                        ++numKeysToBeRemoved;
-                    }
-                }];
-                if(cacheKeysToRemove!=nil) {
-                    [cache removeObjectsForKeys:cacheKeysToRemove];
+                //sort cache key by oldest items first
+                NSArray *sortedKeys = [cache keysSortedByValueUsingComparator:^NSComparisonResult(DBFBProfilePictureCachePrivate *obj1, DBFBProfilePictureCachePrivate *obj2) {
+                                            return [obj1.lastUsed compare:obj2.lastUsed];
+                                       }];
+
+                //go through cache and delete items no longer needed, or oldest items if we have too many of them
+                for (NSString *key in sortedKeys) {
+                    
+                    DBFBProfilePictureCachePrivate *cachedItem = cache[key];
+
+                    if((!cacheBeyondLifetime && cachedItem.imageObject == nil) ||
+                        (cacheBeyondLifetime && [cache count] > maxImagesCached)) {
+                           [cache removeObjectForKey:key];
+                       }
+
                 }
+                
             }
         });
     }
@@ -279,8 +264,7 @@ static BOOL cleanupScheduled = NO;
 {
     [self cleanCache];
     
-    DBFBProfilePictureCachePrivate *cachedItem = [[DBFBProfilePictureCachePrivate alloc] initWithImage:image
-                                                                                   cacheBeyondLifeTime:_cacheBeyondLifetime];
+    DBFBProfilePictureCachePrivate *cachedItem = [[DBFBProfilePictureCachePrivate alloc] initWithImage:image];
     
     NSMutableDictionary *cache = [self.class sharedCacheDictionary];
     @synchronized(cache) {
@@ -298,7 +282,8 @@ static BOOL cleanupScheduled = NO;
         UIImage* cachedImage = nil;
         DBFBProfilePictureCachePrivate* cachedItem = [cache objectForKey:url];
         if(cachedItem != nil) {
-            cachedImage = _cacheBeyondLifetime ? cachedItem.imageObjectStrong : cachedItem.imageObject;
+            cachedItem.lastUsed = [NSDate date];
+            cachedImage = cachedItem.imageObject;
             if(cachedImage == nil) {
                 [cache removeObjectForKey:url];
             }
@@ -455,6 +440,7 @@ static BOOL cleanupScheduled = NO;
                 self.completionHandler(self, nil);
             }
         } else {
+        
             [self requestImageDownload:url];
         }
 

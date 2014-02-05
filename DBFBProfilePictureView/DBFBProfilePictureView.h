@@ -56,13 +56,13 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
  */
 @property (strong) UIImage *emptyImage;
 
-
-/*
- Initialisers to make sure the class caches images beyond their lifetime
- Use of these initialisers is ideal if the class is being used in a UITableViewCell
- Pass 0 Max Cached Images to have no maximum
+/**
+ *  Use this method to change the default caching behaviour of DBFBProfilePictureView
+ *  By default, DBFBProfilePictureView caches only the currently visible images
+ *  By calling this class method with maxImagesCachedBeyondLifetime>0, you will 
+ *  enable caching of images beyond the lifetime of the view displaying them
+ *  Calling with maxImagesCachedBeyondLifetime == 0 reverts to the default behavior
  */
-- (id)initAndCacheImagesBeyondTheirLifetimeMaxImagesCached:(NSUInteger)maxCache;
-- (id)initWithFrame:(CGRect)frame cacheImagesBeyondTheirLifetimeMaxImagesCached:(NSUInteger)maxCache;
++ (void)setMaxImagesCachedBeyondLifetime:(int)maxImagesCachedBeyondLifetime;
 
 @end
