@@ -40,7 +40,8 @@
 
 @interface DBFBProfilePictureCachePrivate : NSObject
 
-@property (weak) UIImage* imageObject;
+@property (strong) UIImage* imageObject;
+@property (strong) NSDate *lastUsed;
 
 @end
 
@@ -51,6 +52,7 @@
     self = [super init];
     if(self) {
         _imageObject = image;
+        _lastUsed = [NSDate date];
     }
     return self;
 }
@@ -193,6 +195,24 @@
     return _sharedCacheDictionary;
 }
 
+static int _maxImagesCachedBeyondLifetime = 0;
+
++ (BOOL)shouldCacheImageBeyondLifetime
+{
+    return _maxImagesCachedBeyondLifetime > 0;
+}
+
++ (int)maxImagesCachedBeyondLifetime
+{
+    return _maxImagesCachedBeyondLifetime;
+}
+
++ (void)setMaxImagesCachedBeyondLifetime:(int)maxImagesCachedBeyondLifetime
+{
+    _maxImagesCachedBeyondLifetime = maxImagesCachedBeyondLifetime;
+}
+
+
 static BOOL cleanupScheduled = NO;
 
 - (void)cleanCache
@@ -215,22 +235,26 @@ static BOOL cleanupScheduled = NO;
             @synchronized(cache) {
 
                 cleanupScheduled = NO;
+                BOOL cacheBeyondLifetime = [[self class] shouldCacheImageBeyondLifetime];
+                int maxImagesCached = [[self class] maxImagesCachedBeyondLifetime];
                 
-                //clean up any cache items that have nil weak references
-                __block NSMutableArray *cacheKeysToRemove = nil;
-                [cache enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop){
-                    DBFBProfilePictureCachePrivate *cachedItem = (DBFBProfilePictureCachePrivate *)value;
-                    if(cachedItem.imageObject == nil) {
-                        if(cacheKeysToRemove == nil) {
-                            cacheKeysToRemove = [NSMutableArray arrayWithObject:key];
-                        } else {
-                            [cacheKeysToRemove addObject:key];
-                        }
-                    }
-                }];
-                if(cacheKeysToRemove!=nil) {
-                    [cache removeObjectsForKeys:cacheKeysToRemove];
+                //sort cache key by oldest items first
+                NSArray *sortedKeys = [cache keysSortedByValueUsingComparator:^NSComparisonResult(DBFBProfilePictureCachePrivate *obj1, DBFBProfilePictureCachePrivate *obj2) {
+                                            return [obj1.lastUsed compare:obj2.lastUsed];
+                                       }];
+
+                //go through cache and delete items no longer needed, or oldest items if we have too many of them
+                for (NSString *key in sortedKeys) {
+                    
+                    DBFBProfilePictureCachePrivate *cachedItem = cache[key];
+
+                    if((!cacheBeyondLifetime && cachedItem.imageObject == nil) ||
+                        (cacheBeyondLifetime && [cache count] > maxImagesCached)) {
+                           [cache removeObjectForKey:key];
+                       }
+
                 }
+                
             }
         });
     }
@@ -258,6 +282,7 @@ static BOOL cleanupScheduled = NO;
         UIImage* cachedImage = nil;
         DBFBProfilePictureCachePrivate* cachedItem = [cache objectForKey:url];
         if(cachedItem != nil) {
+            cachedItem.lastUsed = [NSDate date];
             cachedImage = cachedItem.imageObject;
             if(cachedImage == nil) {
                 [cache removeObjectForKey:url];
