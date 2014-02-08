@@ -20,7 +20,12 @@
 
 @interface DBFBProfilePictureRequestPrivate : NSObject
 
+#define USE_AFNETWORKING_2
+#ifdef USE_AFNETWORKING_2
+@property (strong,nonatomic) AFHTTPRequestOperation* requestOperation;
+#else
 @property (strong,nonatomic) AFImageRequestOperation* requestOperation;
+#endif
 @property (strong,nonatomic) NSMutableSet* requestorsToUpdate;
 
 @end
@@ -379,6 +384,16 @@ static BOOL cleanupScheduled = NO;
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:30.0];
         [request setHTTPShouldHandleCookies:NO];
         [request setHTTPShouldUsePipelining:YES];
+ 
+#ifdef USE_AFNETWORKING_2
+        AFHTTPRequestOperation* requestOperation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
+        requestOperation.responseSerializer = [AFImageResponseSerializer serializer];
+        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+            [self imageDownloadComplete:responseObject forURL:url];
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            [self imageDownloadFailedForURL:url withError:error];
+        }];
+#else
         
         AFImageRequestOperation* requestOperation = [AFImageRequestOperation imageRequestOperationWithRequest:request
                                                                                          imageProcessingBlock:nil
@@ -388,6 +403,7 @@ static BOOL cleanupScheduled = NO;
                                                                                                       failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError* error){
                                                                                                           [self imageDownloadFailedForURL:url withError:error];
                                                                                                       }];
+#endif
         
         [[[self class] sharedProfileImageRequestOperationQueue] addOperation:requestOperation];
         pictureRequest.requestOperation = requestOperation;
