@@ -63,6 +63,11 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
  *  enable caching of images beyond the lifetime of the view displaying them
  *  Calling with maxImagesCachedBeyondLifetime == 0 reverts to the default behavior
  */
-+ (void)setMaxImagesCachedBeyondLifetime:(int)maxImagesCachedBeyondLifetime;
++ (void)setMaxImagesCachedBeyondLifetime:(NSInteger)maxImagesCachedBeyondLifetime;
+
+/**
+ * Access the maximum cache size
+ */
++ (NSInteger)maxImagesCachedBeyondLifetime;
 
 @end
