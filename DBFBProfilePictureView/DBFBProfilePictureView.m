@@ -20,7 +20,7 @@
 
 @interface DBFBProfilePictureRequestPrivate : NSObject
 
-#define USE_AFNETWORKING_2
+//#define USE_AFNETWORKING_2
 #ifdef USE_AFNETWORKING_2
 @property (strong,nonatomic) AFHTTPRequestOperation* requestOperation;
 #else
