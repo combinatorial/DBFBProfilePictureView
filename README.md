@@ -72,12 +72,23 @@ Set the profileID when you know it:
 		facebookPictureView.profileID = xxxxx;
 ```
 
+You can enable image caching support by calling:
+
+```objc
+		[DBFBProfilePictureView setMaxImagesCachedBeyondLifetime:cacheSize];
+```
+
+The cache can be disabled again by passing a cache size of 0.
+
 ## Version history
 
-1.4.2 - fix bug with unregistering an observer (thanks to FlorianDenis).
+1.5.0 - added support for enabling profile images to be cached (thanks to @cellininicholas & @FlorianDenis)
+      - added support for AFNetworking 2. Define USE_AFNETWORKING_2 in DBFBProfilePictureView.m
+
+1.4.2 - fix bug with unregistering an observer (thanks to @FlorianDenis).
 
 1.4.1 - fix infinite recursion when no custom empty profile picture is specified.
-      - Remove use of deprecated FBGraphBasePath (thanks to FlorianDenis).
+      - Remove use of deprecated FBGraphBasePath (thanks to @FlorianDenis).
 
 1.4.0 - allow a custom image to be set to be shown if no profile picture is available
 
