@@ -70,4 +70,13 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
  */
 + (NSInteger)maxImagesCachedBeyondLifetime;
 
+/**
+ * Enable disk cache.
+ * If cache is enabled DBFBProfilePictureView will try to find localy
+ * downloaded copy of image. If image doesn't exists it will download
+ * it and save localy. You can manipulate cache life time with 'lifetime'
+ * parameter.
+ */
++ (void)enableDiskCache:(BOOL)enable lifetime:(NSTimeInterval)lifetime;
+
 @end

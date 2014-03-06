@@ -218,6 +218,14 @@
 }
 
 static NSInteger _maxImagesCachedBeyondLifetime = 0;
+static NSTimeInterval _diskCacheLifetime = 0;
+static BOOL _diskCacheEnabled = NO;
+
++ (void)enableDiskCache:(BOOL)enable lifetime:(NSTimeInterval)lifetime
+{
+    _diskCacheEnabled = enable;
+    _diskCacheLifetime = lifetime;
+}
 
 + (BOOL)shouldCacheImageBeyondLifetime
 {
@@ -290,7 +298,23 @@ static BOOL cleanupScheduled = NO;
                         [cache removeObjectsForKeys:sortedKeysTruncated];
                     }
                 }
-                
+
+                NSFileManager *fileManager = [NSFileManager defaultManager];
+                NSArray *contents = [fileManager contentsOfDirectoryAtURL:[NSURL fileURLWithPath:[self diskCacheRoot]]
+                                               includingPropertiesForKeys:@[]
+                                                                  options:NSDirectoryEnumerationSkipsHiddenFiles
+                                                                    error:nil];
+                NSDate *today = [NSDate date];
+                for (NSURL *fileURL in contents) {
+                    NSDate *expirationDate = nil;
+                    NSDictionary *attributes = [fileManager attributesOfItemAtPath:[fileURL path] error:nil];
+                    expirationDate = [attributes[NSFileCreationDate] dateByAddingTimeInterval:_diskCacheLifetime];
+
+                    if ([expirationDate compare:today] == NSOrderedDescending) {
+                        [fileManager removeItemAtURL:fileURL error:nil];
+                    }
+                }
+
             }
         });
     }
@@ -302,19 +326,54 @@ static BOOL cleanupScheduled = NO;
     
     BOOL cacheBeyondLifetime = [[self class] shouldCacheImageBeyondLifetime];
     DBFBProfilePictureCachePrivate *cachedItem = [[DBFBProfilePictureCachePrivate alloc] initWithImage:image weakCaching:!cacheBeyondLifetime];
-    
+
     NSMutableDictionary *cache = [self.class sharedCacheDictionary];
     @synchronized(cache) {
         [cache setObject:cachedItem forKey:url];
+        if (_diskCacheEnabled) {
+            [UIImagePNGRepresentation(image) writeToFile:[self filePathForCachedImage:url] atomically:YES];
+        }
     }
 }
 
+- (NSString *)diskCacheRoot
+{
+    NSString *cacheDir = @"DBFBProfilePictureViewCache";
+    NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    return [documentsPath stringByAppendingPathComponent:cacheDir];
+}
+
+- (NSString *)filePathForCachedImage:(NSURL *)url
+{
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *imagesPath = [self diskCacheRoot];
+
+    if (![fileManager fileExistsAtPath:imagesPath]) {
+        [fileManager createDirectoryAtPath:imagesPath withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+
+    return [NSString stringWithFormat:@"%@/%i.png", imagesPath, [url hash]];
+}
+
+- (BOOL)localyCachedImageExists:(NSURL *)url
+{
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *filePath = [self filePathForCachedImage:url];
+    return [fileManager fileExistsAtPath:filePath];
+}
 - (UIImage*)cachedImageForURL:(NSURL*)url
 {
     [self cleanCache];
-    
+
+    if (_diskCacheEnabled && [self localyCachedImageExists:url]) {
+        NSData *restoredData = [NSData dataWithContentsOfFile:[self filePathForCachedImage:url]];
+        if (restoredData != nil) {
+            return [UIImage imageWithData:restoredData];
+        }
+    }
+
     NSMutableDictionary *cache = [self.class sharedCacheDictionary];
-    
+
     @synchronized(cache) {
         UIImage* cachedImage = nil;
         DBFBProfilePictureCachePrivate* cachedItem = [cache objectForKey:url];
