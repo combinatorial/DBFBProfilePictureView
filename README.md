@@ -88,7 +88,7 @@ Also you can enable disk caching support by calling:
 
 ## Version history
 
-1.5.1 - added support for enabling disk cache
+1.5.1 - added support for enabling disk cache (thanks to @ekratskih)
 
 1.5.0 - added support for enabling profile images to be cached (thanks to @cellininicholas & @FlorianDenis)
       - added support for AFNetworking 2. Define USE_AFNETWORKING_2 in DBFBProfilePictureView.m
