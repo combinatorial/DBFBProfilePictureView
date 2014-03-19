@@ -352,7 +352,7 @@ static BOOL cleanupScheduled = NO;
         [fileManager createDirectoryAtPath:imagesPath withIntermediateDirectories:YES attributes:nil error:nil];
     }
 
-    return [NSString stringWithFormat:@"%@/%i.png", imagesPath, [url hash]];
+    return [NSString stringWithFormat:@"%@/%lu.png", imagesPath,(unsigned long)[url hash]];
 }
 
 - (BOOL)localyCachedImageExists:(NSURL *)url
