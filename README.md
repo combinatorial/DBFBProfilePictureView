@@ -88,6 +88,8 @@ Also you can enable disk caching support by calling:
 
 ## Version history
 
+1.5.2 - fix bug with disk cache hash overflowing int (thanks to @ekaralar)
+
 1.5.1 - added support for enabling disk cache (thanks to @ekratskih)
 
 1.5.0 - added support for enabling profile images to be cached (thanks to @cellininicholas & @FlorianDenis)
