@@ -310,7 +310,7 @@ static BOOL cleanupScheduled = NO;
                     NSDictionary *attributes = [fileManager attributesOfItemAtPath:[fileURL path] error:nil];
                     expirationDate = [attributes[NSFileCreationDate] dateByAddingTimeInterval:_diskCacheLifetime];
 
-                    if ([expirationDate compare:today] == NSOrderedDescending) {
+                    if ([expirationDate compare:today] == NSOrderedAscending) {
                         [fileManager removeItemAtURL:fileURL error:nil];
                     }
                 }
