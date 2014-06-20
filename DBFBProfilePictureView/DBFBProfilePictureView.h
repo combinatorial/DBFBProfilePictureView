@@ -45,6 +45,11 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
 @property (strong) DBFBProfilePictureViewHandler completionHandler;
 
 /**
+ Exposes the internal imageView for inspection of its contents
+ */
+@property (nonatomic, readonly) UIImageView* imageView;
+
+/**
  Set whether the empty profile picture gets shown when the profileID is nil.
  Defaults to NO
  */
