@@ -88,6 +88,9 @@ Also you can enable disk caching support by calling:
 
 ## Version history
 
+1.5.3 - fix bug with long facebook ids and the disk cache (thanks to @fmalekpour)
+      - Expose imageView as a readonly property (thanks to @0xc00010ff)
+
 1.5.2 - fix bug with disk cache hash overflowing int (thanks to @ekaralar)
 
 1.5.1 - added support for enabling disk cache (thanks to @ekratskih)
