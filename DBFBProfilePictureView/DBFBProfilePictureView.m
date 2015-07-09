@@ -544,30 +544,11 @@ static BOOL cleanupScheduled = NO;
         // Create the request to let the Facebook SDK handle the URL
         NSString *graphPath = [NSString stringWithFormat:@"https://graph.facebook.com/%@/picture",self.profileID];
         
-        //        FBSDKGraphRequest *request = [[FBSDKGraphRequest alloc]
-        //                                      initWithGraphPath:graphPath
-        //                                      parameters:newImageQueryParam
-        //                                      HTTPMethod:@"GET"];
-        
-        //        [request startWithCompletionHandler:^(FBSDKGraphRequestConnection *connection,
-        //                                              id result,
-        //                                              NSError *error) {
-        //
-        //            NSLog(@"Connection: %@", connection);
-        //            NSLog(@"Result: %@", result);
-        //            NSLog(@"Error: %@", error);
-        //            // Handle the result
-        //
-        //        }];
-        
         NSURLRequest *request = [[NSURLRequest alloc] initWithURL:[NSURL URLWithString:graphPath]];
         
         showEmptyImage = NO;
         
         [NSURLConnection sendAsynchronousRequest:request queue:[NSOperationQueue mainQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
-            NSLog(@"Response: %@", response);
-            NSLog(@"Data: %@", data);
-            NSLog(@"Error: %@", connectionError);
             
             // Get the url
             NSURL *url = response.URL;
