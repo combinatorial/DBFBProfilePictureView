@@ -15,7 +15,7 @@
  */
 
 #import <UIKit/UIKit.h>
-#import <FacebookSDK/FacebookSDK.h>
+#import <FBSDKCoreKit/FBSDKCoreKit.h>
 
 @class DBFBProfilePictureView;
 typedef void (^DBFBProfilePictureViewStartHandler)(DBFBProfilePictureView *profilePictureView);
@@ -31,7 +31,7 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
 /**
  The cropping type you want for the picture, the enum is defined in the facebook SDK.
  */
-@property FBProfilePictureCropping pictureCropping;
+@property FBSDKProfilePictureMode pictureCropping;
 
 /**
  A block that gets called before the download of a profile picture begins.
