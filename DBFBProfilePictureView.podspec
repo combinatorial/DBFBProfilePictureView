@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.requires_arc = true
   s.source_files = 'DBFBProfilePictureView'
   s.dependency 'AFNetworking', '>= 2.2'
-  s.dependency 'FBSDKCoreKit', '~> 4.3.0'
+  s.dependency 'FBSDKCoreKit', '~> 4.3'
   s.compiler_flags = '-DUSE_AFNETWORKING_2'
   s.framework    = 'QuartzCore', 'MobileCoreServices', 'SystemConfiguration'
 
