@@ -88,6 +88,8 @@ Also you can enable disk caching support by calling:
 
 ## Version history
 
+1.6.0 - move to FBSDK v4 and AFNetworking 2 (thanks to @Rawrcoon)
+
 1.5.3 - fix bug with long facebook ids and the disk cache (thanks to @fmalekpour)
       - Expose imageView as a readonly property (thanks to @0xc00010ff)
 
