@@ -140,15 +140,15 @@
     // to be calculated using the scale factor accessed above.
     int width = (int)(self.bounds.size.width * screenScaleFactor);
     
-    if (self.pictureCropping == FBProfilePictureCroppingSquare) {
+    if (self.pictureCropping == FBSDKProfilePictureModeSquare) {
         
         if(width == 0) {
             return nil;
         }
         
         return @{
-                     @"width" :  [NSString stringWithFormat:@"%d",width],
-                     @"height" : [NSString stringWithFormat:@"%d",width],
+                 @"width" :  [NSString stringWithFormat:@"%d",width],
+                 @"height" : [NSString stringWithFormat:@"%d",width],
                  };
     }
     
@@ -161,7 +161,7 @@
     } else {
         return @{@"type":@"large"};
     }
-
+    
 }
 
 - (void)initialize {
@@ -267,13 +267,13 @@ static BOOL cleanupScheduled = NO;
             cleanupScheduled = YES;
         }
     }
-
+    
     if(needCleanup) {
         //clean up the cache some time later (30 seconds), it only depends on class methods
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 30ull * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
             
             @synchronized(cache) {
-
+                
                 cleanupScheduled = NO;
                 BOOL cacheBeyondLifetime = [[self class] shouldCacheImageBeyondLifetime];
                 
@@ -299,7 +299,7 @@ static BOOL cleanupScheduled = NO;
                         [cache removeObjectsForKeys:sortedKeysTruncated];
                     }
                 }
-
+                
                 NSFileManager *fileManager = [NSFileManager defaultManager];
                 NSArray *contents = [fileManager contentsOfDirectoryAtURL:[NSURL fileURLWithPath:[self diskCacheRoot]]
                                                includingPropertiesForKeys:@[]
@@ -310,12 +310,12 @@ static BOOL cleanupScheduled = NO;
                     NSDate *expirationDate = nil;
                     NSDictionary *attributes = [fileManager attributesOfItemAtPath:[fileURL path] error:nil];
                     expirationDate = [attributes[NSFileCreationDate] dateByAddingTimeInterval:_diskCacheLifetime];
-
+                    
                     if ([expirationDate compare:today] == NSOrderedAscending) {
                         [fileManager removeItemAtURL:fileURL error:nil];
                     }
                 }
-
+                
             }
         });
     }
@@ -327,7 +327,7 @@ static BOOL cleanupScheduled = NO;
     
     BOOL cacheBeyondLifetime = [[self class] shouldCacheImageBeyondLifetime];
     DBFBProfilePictureCachePrivate *cachedItem = [[DBFBProfilePictureCachePrivate alloc] initWithImage:image weakCaching:!cacheBeyondLifetime];
-
+    
     NSMutableDictionary *cache = [self.class sharedCacheDictionary];
     @synchronized(cache) {
         [cache setObject:cachedItem forKey:url];
@@ -346,15 +346,15 @@ static BOOL cleanupScheduled = NO;
 
 - (NSString *)getMD5FromString:(NSString *)source
 {
-	const char *src = [source UTF8String];
-	unsigned char result[CC_MD5_DIGEST_LENGTH];
-	CC_MD5(src, strlen(src), result);
+    const char *src = [source UTF8String];
+    unsigned char result[CC_MD5_DIGEST_LENGTH];
+    CC_MD5(src, (CC_LONG)strlen(src), result);
     NSString *ret = [NSString stringWithFormat:@"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-					 result[0], result[1], result[2], result[3],
-					 result[4], result[5], result[6], result[7],
-					 result[8], result[9], result[10], result[11],
-					 result[12], result[13], result[14], result[15]
-					 ];
+                     result[0], result[1], result[2], result[3],
+                     result[4], result[5], result[6], result[7],
+                     result[8], result[9], result[10], result[11],
+                     result[12], result[13], result[14], result[15]
+                     ];
     return [ret lowercaseString];
 }
 
@@ -362,11 +362,11 @@ static BOOL cleanupScheduled = NO;
 {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *imagesPath = [self diskCacheRoot];
-
+    
     if (![fileManager fileExistsAtPath:imagesPath]) {
         [fileManager createDirectoryAtPath:imagesPath withIntermediateDirectories:YES attributes:nil error:nil];
     }
-
+    
     return [NSString stringWithFormat:@"%@/%@.png", imagesPath,[self getMD5FromString:[url absoluteString]]];
 }
 
@@ -379,16 +379,16 @@ static BOOL cleanupScheduled = NO;
 - (UIImage*)cachedImageForURL:(NSURL*)url
 {
     [self cleanCache];
-
+    
     if (_diskCacheEnabled && [self localyCachedImageExists:url]) {
         NSData *restoredData = [NSData dataWithContentsOfFile:[self filePathForCachedImage:url]];
         if (restoredData != nil) {
             return [UIImage imageWithData:restoredData];
         }
     }
-
+    
     NSMutableDictionary *cache = [self.class sharedCacheDictionary];
-
+    
     @synchronized(cache) {
         UIImage* cachedImage = nil;
         DBFBProfilePictureCachePrivate* cachedItem = [cache objectForKey:url];
@@ -417,7 +417,7 @@ static BOOL cleanupScheduled = NO;
 }
 
 - (void)imageDownloadComplete:(UIImage*)image forURL:(NSURL*)url
-{    
+{
     NSMutableDictionary* requestsInProgress = [[self class] sharedImageRequestDictionary];
     DBFBProfilePictureRequestPrivate *pictureRequest = nil;
     @synchronized(requestsInProgress) {
@@ -486,11 +486,11 @@ static BOOL cleanupScheduled = NO;
     }
     
     if(pictureRequest) {
-
+        
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:30.0];
         [request setHTTPShouldHandleCookies:NO];
         [request setHTTPShouldUsePipelining:YES];
- 
+        
 #ifdef USE_AFNETWORKING_2
         AFHTTPRequestOperation* requestOperation = [[AFHTTPRequestOperation alloc] initWithRequest:request];
         requestOperation.responseSerializer = [AFImageResponseSerializer serializer];
@@ -542,40 +542,40 @@ static BOOL cleanupScheduled = NO;
         [self removeFromRequestorsList];
         
         // Create the request to let the Facebook SDK handle the URL
-        NSString *graphPath = [NSString stringWithFormat:@"%@/picture",self.profileID];
-        FBRequest *fbRequest = [[FBRequest alloc] initWithSession:nil graphPath:graphPath parameters:newImageQueryParam HTTPMethod:nil];
-        FBRequestConnection *requestConnection = [[FBRequestConnection alloc] init];
-        [requestConnection addRequest:fbRequest completionHandler:nil];
+        NSString *graphPath = [NSString stringWithFormat:@"https://graph.facebook.com/%@/picture",self.profileID];
         
+        NSURLRequest *request = [[NSURLRequest alloc] initWithURL:[NSURL URLWithString:graphPath]];
         
-        // Get the url
-        NSURL *url = requestConnection.urlRequest.URL;
+        showEmptyImage = NO;
         
-        
-        UIImage* cachedImage = [self cachedImageForURL:url];
-        
-        if(cachedImage != nil) {
-            showEmptyImage = NO;
-            self.imageView.image = cachedImage;
-            [self ensureImageViewContentMode];
-            if(self.completionHandler != nil) {
-                self.completionHandler(self, nil);
+        [NSURLConnection sendAsynchronousRequest:request queue:[NSOperationQueue mainQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
+            
+            // Get the url
+            NSURL *url = response.URL;
+            
+            UIImage* cachedImage = [self cachedImageForURL:url];
+            
+            if(cachedImage != nil) {
+                
+                self.imageView.image = cachedImage;
+                [self ensureImageViewContentMode];
+                
+                if(self.completionHandler != nil)
+                {
+                    self.completionHandler(self, nil);
+                }
             }
-        } else {
+            else
+            {
+                [self requestImageDownload:url];
+            }
+        }];
         
-            [self requestImageDownload:url];
-        }
-
     }
     
     if(showEmptyImage) {
         if (self.emptyImage == nil) {
-         
-            BOOL isSquare = (self.pictureCropping == FBProfilePictureCroppingSquare);
-            
-            NSString *blankImageName = [NSString stringWithFormat:@"FacebookSDKResources.bundle/FBProfilePictureView/images/fb_blank_profile_%@.png",
-                                        isSquare ? @"square" : @"portrait"];
-            _emptyImage = [UIImage imageNamed:blankImageName];
+            _emptyImage = [UIImage new];
         }
         
         self.imageView.image = self.emptyImage;
@@ -586,23 +586,26 @@ static BOOL cleanupScheduled = NO;
 }
 
 - (void)ensureImageViewContentMode {
-    // Set the image's contentMode such that if the image is larger than the control, we scale it down, preserving aspect
-    // ratio.  Otherwise, we center it.  This ensures that we never scale up, and pixellate, the image.
-    CGSize viewSize = self.bounds.size;
-    CGSize imageSize = self.imageView.image.size;
-    UIViewContentMode contentMode;
+    // Setting aspect fit allways should be fine
+//    
+//    // Set the image's contentMode such that if the image is larger than the control, we scale it down, preserving aspect
+//    // ratio.  Otherwise, we center it.  This ensures that we never scale up, and pixellate, the image.
+//    CGSize viewSize = self.bounds.size;
+//    CGSize imageSize = self.imageView.image.size;
+//    UIViewContentMode contentMode;
+//    
+//    // If both of the view dimensions are larger than the image, we'll center the image to prevent scaling up.
+//    // Note that unlike in choosing the image size, we *don't* use any Retina-display scaling factor to choose centering
+//    // vs. filling.  If we were to do so, we'd get profile pics shrinking to fill the the view on non-Retina, but getting
+//    // centered and clipped on Retina.
+//    if (viewSize.width > imageSize.width && viewSize.height > imageSize.height) {
+//        contentMode = UIViewContentModeCenter;
+//    } else {
+//        contentMode = UIViewContentModeScaleAspectFit;
+//    }
     
-    // If both of the view dimensions are larger than the image, we'll center the image to prevent scaling up.
-    // Note that unlike in choosing the image size, we *don't* use any Retina-display scaling factor to choose centering
-    // vs. filling.  If we were to do so, we'd get profile pics shrinking to fill the the view on non-Retina, but getting
-    // centered and clipped on Retina.
-    if (viewSize.width > imageSize.width && viewSize.height > imageSize.height) {
-        contentMode = UIViewContentModeCenter;
-    } else {
-        contentMode = UIViewContentModeScaleAspectFit;
-    }
-    
-    self.imageView.contentMode = contentMode;
+//    self.imageView.contentMode = contentMode;
+    self.contentMode = UIViewContentModeScaleAspectFit;
 }
 
 // Lets us catch resizes of the control, or any outer layout, allowing us to potentially
