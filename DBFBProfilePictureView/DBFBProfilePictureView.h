@@ -23,6 +23,7 @@ typedef void (^DBFBProfilePictureViewHandler)(DBFBProfilePictureView *profilePic
 
 @interface DBFBProfilePictureView : UIView
 
+@property (strong, nonatomic) UIImageView *imageView;
 /**
  The facebook profile id for the user picture that you want to load.
  */
